@@ -1,1 +1,203 @@
+The goal of this project is to implement a hotel reservation manager using object-oriented programming in C++. The system supports dynamic handling of different types of hotel rooms, allows checking room availability, booking rooms on specific dates, and removing rooms. Polymorphism and dynamic memory allocation are used extensively.
 
+ HOW THE TASK IS COMPLETED:
+
+*Defined a Date structure with methods for comparison and display.
+
+*Created an abstract Room class with pure virtual functions for checking and reserving dates.
+
+*Derived two concrete classes from Room: StandardSuite and PresidentialSuite.
+
+*Implemented functions to dynamically add and remove rooms from a room list (Room**).
+
+*In the main() function, instantiated rooms, booked dates, checked availability, and removed a room.
+
+
+EXPLANATION OF CODES LINES WITH COMMENTS
+
+#include <iostream>                         // Include input-output stream for console I/O
+using namespace std;                        // Use standard namespace to avoid std:: prefix
+
+// DATE STRUCTURE
+struct Date {
+    int day, month, year;                   // Define integers for day, month, and year
+
+    bool equals(const Date* other) const {  // Function to compare this date with another
+        return day == other->day &&         // Check if day is equal
+               month == other->month &&     // Check if month is equal
+               year == other->year;         // Check if year is equal
+    }
+
+    void print() const {                    // Function to print the date in dd/mm/yyyy format
+        cout << day << "/" << month << "/" << year;  // Output date to console
+    }
+};
+
+// ABSTRACT CLASS ROOM
+class Room {
+protected:
+    Date* reservations;                     // Pointer to array of reserved dates
+    int resCount;                           // Number of reservations
+    int roomId;                             // Unique ID for the room
+
+public:
+    Room(int id) : reservations(nullptr), resCount(0), roomId(id) {} // Constructor initializes members
+
+    virtual bool isReserved(const Date* date) = 0;     // Pure virtual: must check if date is reserved
+    virtual void reserve(const Date* date) = 0;        // Pure virtual: must reserve date
+    virtual void displayType() = 0;                    // Pure virtual: must display room type
+    int getRoomId() const { return roomId; }           // Returns room ID
+
+    virtual ~Room() { delete[] reservations; }         // Destructor deletes dynamic reservations array
+
+protected:
+    bool dateExists(const Date* date) {                // Check if a given date already exists
+        for (int i = 0; i < resCount; i++) {           // Loop through all reserved dates
+            if ((reservations + i)->equals(date))      // Compare each date
+                return true;                           // Return true if match found
+        }
+        return false;                                  // Return false if date not found
+    }
+
+    void addDate(const Date* date) {                   // Add new date to reservations
+        Date* newArr = new Date[resCount + 1];         // Create new array of size +1
+        for (int i = 0; i < resCount; i++)             // Copy old reservations to new array
+            newArr[i] = reservations[i];               //
+        newArr[resCount] = *date;                      // Add new date at the end
+        delete[] reservations;                         // Delete old array
+        reservations = newArr;                         // Point to new array
+        resCount++;                                    // Increment reservation count
+    }
+};
+
+// STANDARD SUITE CLASS (DERIVED FROM ROOM)
+class StandardSuite : public Room {
+public:
+    StandardSuite(int id) : Room(id) {}                // Constructor calls base class constructor
+
+    bool isReserved(const Date* date) {                // Check if a date is reserved
+        return dateExists(date);                       // Use base class helper function
+    }
+
+    void reserve(const Date* date) {                   // Reserve the room if date is available
+        if (!isReserved(date)) {                       // If not already reserved
+            addDate(date);                             // Add reservation
+            cout << "Reserved Standard Suite #" << roomId << " on ";
+            date->print(); cout << endl;
+        } else {                                       // If already reserved
+            cout << "Standard Suite #" << roomId << " is already reserved on ";
+            date->print(); cout << endl;
+        }
+    }
+
+    void displayType() {                               // Show the room type
+        cout << "Standard Suite #" << roomId << endl;  // Print room ID with label
+    }
+};
+
+// PRESIDENTIAL SUITE CLASS (DERIVED FROM ROOM)
+class PresidentialSuite : public Room {
+public:
+    PresidentialSuite(int id) : Room(id) {}            // Constructor calls base constructor
+
+    bool isReserved(const Date* date) {                // Check if date is already booked
+        return dateExists(date);                       // Use base class method
+    }
+
+    void reserve(const Date* date) {                   // Attempt to reserve the room
+        if (!isReserved(date)) {                       // If date not reserved
+            addDate(date);                             // Add reservation
+            cout << "Reserved Presidential Suite #" << roomId << " on ";
+            date->print(); cout << endl;
+        } else {                                       // If already booked
+            cout << "Presidential Suite #" << roomId << " is already reserved on ";
+            date->print(); cout << endl;
+        }
+    }
+
+    void displayType() {                               // Show the room type
+        cout << "Presidential Suite #" << roomId << endl;
+    }
+};
+
+// FUNCTION TO ADD A ROOM TO ARRAY
+Room** addRoom(Room** rooms, int& size, Room* newRoom) {
+    Room** newArr = new Room*[size + 1];               // Create a new array with one extra slot
+    for (int i = 0; i < size; i++)                     // Copy existing room pointers
+        newArr[i] = rooms[i];
+    newArr[size] = newRoom;                            // Add the new room at the end
+    delete[] rooms;                                    // Delete old array
+    size++;                                            // Increase room count
+    return newArr;                                     // Return new array
+}
+
+// FUNCTION TO REMOVE A ROOM BY ID
+Room** removeRoom(Room** rooms, int& size, int roomId) {
+    int index = -1;                                    // Store index of room to remove
+    for (int i = 0; i < size; i++) {                   // Search for room by ID
+        if (rooms[i]->getRoomId() == roomId) {
+            index = i;
+            break;
+        }
+    }
+    if (index == -1) return rooms;                     // If room not found, return unchanged
+
+    Room** newArr = new Room*[size - 1];               // Create smaller array
+    int j = 0;
+    for (int i = 0; i < size; i++) {
+        if (i != index)                                // Copy all rooms except the one to remove
+            newArr[j++] = rooms[i];
+        else
+            delete rooms[i];                           // Delete the removed room
+    }
+    delete[] rooms;                                    // Delete old array
+    size--;                                            // Decrease size
+    return newArr;                                     // Return updated array
+}
+
+// MAIN FUNCTION
+int main() {
+    Room** rooms = nullptr;                            // Pointer to array of Room pointers
+    int roomCount = 0;                                 // Number of rooms initially zero
+
+    // Add rooms to the hotel
+    rooms = addRoom(rooms, roomCount, new StandardSuite(101));     // Add Standard Suite #101
+    rooms = addRoom(rooms, roomCount, new PresidentialSuite(201)); // Add Presidential Suite #201
+    rooms = addRoom(rooms, roomCount, new StandardSuite(102));     // Add Standard Suite #102
+
+    // Define two dates
+    Date d1 = {17, 6, 2025};                           // Reservation date: June 17, 2025
+    Date d2 = {18, 6, 2025};                           // Reservation date: June 18, 2025
+
+    cout << "--- Reserving Rooms ---\n";               // Heading
+
+    rooms[0]->reserve(&d1);                            // Reserve room #101 on June 17
+    rooms[1]->reserve(&d1);                            // Reserve room #201 on June 17
+    rooms[0]->reserve(&d1);                            // Try to reserve #101 again on same date
+
+    cout << "\n--- Checking Availability ---\n";       // Heading
+
+    for (int i = 0; i < roomCount; i++) {              // Loop through all rooms
+        rooms[i]->displayType();                       // Show room type
+        if (rooms[i]->isReserved(&d2)) {               // Check if reserved on June 18
+            cout << "  Reserved on ";
+            d2.print(); cout << "\n";
+        } else {
+            cout << "  Available on ";                 // If not reserved
+            d2.print(); cout << "\n";
+        }
+    }
+
+    cout << "\n--- Removing Room 102 ---\n";           // Heading
+    rooms = removeRoom(rooms, roomCount, 102);         // Remove room with ID 102
+
+    cout << "\n--- Remaining Rooms ---\n";             // Heading
+    for (int i = 0; i < roomCount; i++)                // Loop through remaining rooms
+        rooms[i]->displayType();                       // Display room type and ID
+
+    for (int i = 0; i < roomCount; i++)                // Free memory for each room
+        delete rooms[i];
+    delete[] rooms;                                    // Delete room array
+
+    return 0;                                          // End program
+}
